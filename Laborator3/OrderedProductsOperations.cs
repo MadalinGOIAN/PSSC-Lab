@@ -27,7 +27,7 @@ public static class OrderedProductsOperations
             if(!Quantity.TryParseQuantity(unvalidatedProduct.Quantity, out Quantity quantity)
                 && checkProductIsInStock(quantity))
             {
-                invalidReason = $"Insufficient stock";
+                invalidReason = $"Invalid quantity ({unvalidatedProduct.Quantity})";
                 isValidList = false;
                 break;
             }

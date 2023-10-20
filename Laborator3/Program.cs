@@ -18,7 +18,9 @@ internal class Program
             },
             whenProductOrderPublishedSucceededEvent: _event =>
             {
+                Console.Clear();
                 Console.WriteLine($"Publish succeeded.");
+                Console.WriteLine($"Date livrare: {Client.Name}, {Client.Adress}");
                 Console.WriteLine(_event.Csv);
                 return _event;
             });
