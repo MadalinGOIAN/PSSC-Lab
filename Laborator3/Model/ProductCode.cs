@@ -5,14 +5,14 @@ namespace Laborator3.Model;
 
 public record ProductCode
 {
-    private static readonly Regex ValidPattern = new("^[0-9]{10,13}$");
+    private static readonly Regex ValidPattern = new("^[0-9]{5}$");
     public string Value { get; }
 
     internal ProductCode(string value)
     {
         if (IsValid(value))
             Value = value;
-        else throw new InvalidProductCodeException("The product code needs to have between 10 and 13 digits!");
+        else throw new InvalidProductCodeException("The product code needs to have 5 digits!");
     }
 
     private static bool IsValid(string stringValue) => ValidPattern.IsMatch(stringValue);

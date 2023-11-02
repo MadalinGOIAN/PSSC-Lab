@@ -16,15 +16,15 @@ public static class OrderedProductsOperations
 
         foreach (var unvalidatedProduct in orderedProducts.ProductList)
         {
-            if(!ProductCode.TryParse(unvalidatedProduct.ProductCode, out ProductCode productCode)
-                && checkProductExists(productCode))
+            if (!ProductCode.TryParse(unvalidatedProduct.ProductCode, out ProductCode productCode)
+                || !checkProductExists(productCode))
             {
                 invalidReason = $"Invalid product code ({unvalidatedProduct.ProductCode})";
                 isValidList = false;
                 break;
             }
 
-            if(!Quantity.TryParseQuantity(unvalidatedProduct.Quantity, out Quantity quantity)
+            if (!Quantity.TryParseQuantity(unvalidatedProduct.Quantity, out Quantity quantity)
                 && checkProductIsInStock(quantity))
             {
                 invalidReason = $"Invalid quantity ({unvalidatedProduct.Quantity})";
@@ -66,7 +66,8 @@ public static class OrderedProductsOperations
         calculatedProducts.ProductList.Aggregate(csv, (export, product)
             => export.AppendLine($"{product.ProductCode.Value}, {product.Quantity.Value}, {product.TotalPrice.Value}"));
 
-        PublishedOrderedProducts publishedOrderedProducts = new(calculatedProducts.ProductList, csv.ToString(), DateTime.Now);
+        PublishedOrderedProducts publishedOrderedProducts =
+            new(calculatedProducts.ProductList, csv.ToString(), DateTime.Now);
 
         return publishedOrderedProducts;
     });

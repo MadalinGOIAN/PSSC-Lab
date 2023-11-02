@@ -8,7 +8,9 @@ internal class Program
         var listOfPlacedProducts = ReadListOfProducts().ToArray();
         OrderProductsCommand command = new(listOfPlacedProducts);
         OrderProductsWorkflow workflow = new();
-        var result = workflow.Execute(command, (productCode) => true, (quantity) => true );
+        var result = workflow.Execute(command,
+            (productCode) => ProductRepository.AvailableProducts.Any((product) => product.ProductCode.Equals(productCode)),
+            (quantity) => true );
 
         result.Match(
             whenProductOrderPublishedFailedEvent: _event =>
