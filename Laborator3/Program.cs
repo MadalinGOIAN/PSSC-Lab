@@ -1,16 +1,16 @@
 ﻿using Laborator3;
 using Laborator3.Model;
+using LanguageExt;
+using static LanguageExt.Prelude;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         var listOfPlacedProducts = ReadListOfProducts().ToArray();
         OrderProductsCommand command = new(listOfPlacedProducts);
         OrderProductsWorkflow workflow = new();
-        var result = workflow.Execute(command,
-            (productCode) => ProductRepository.AvailableProducts.Any((product) => product.ProductCode.Equals(productCode)),
-            (quantity) => true );
+        var result = await workflow.ExecuteAsync(command, CheckProductExists, CheckProductIsInStock);
 
         result.Match(
             whenProductOrderPublishedFailedEvent: _event =>
@@ -53,4 +53,9 @@ internal class Program
         Console.Write(prompt);
         return Console.ReadLine();
     }
+
+    private static TryAsync<bool> CheckProductExists(ProductCode productCode)
+        => TryAsync(() => Task.FromResult(true));
+    private static TryAsync<bool> CheckProductIsInStock(Quantity quantity)
+        => TryAsync(() => Task.FromResult(true));
 }

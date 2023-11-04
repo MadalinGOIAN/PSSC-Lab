@@ -1,10 +1,6 @@
 ﻿using Laborator3.Model.Exceptions;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace Laborator3.Model;
 
@@ -21,21 +17,12 @@ public record Quantity
 
     public override string ToString() => Value.ToString();
 
-    public static bool TryParseQuantity(string stringQuantity, out Quantity quantity)
+    public static Option<Quantity> TryParse(string stringQuantity)
     {
-        bool isValid = false;
-        quantity = null;
+        if (int.TryParse(stringQuantity, out int numericQuantity) && IsValid(numericQuantity))
+            return Some(new Quantity(numericQuantity));
 
-        if (int.TryParse(stringQuantity, out int numericQuantity))
-        {
-            if (IsValid(numericQuantity))
-            {
-                isValid = true;
-                quantity = new(numericQuantity);
-            }
-        }
-
-        return isValid;
+        return None;
     }
 
     private static bool IsValid(int numericQuantity) => numericQuantity > 0;

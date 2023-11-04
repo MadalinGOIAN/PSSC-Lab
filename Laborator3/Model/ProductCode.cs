@@ -1,5 +1,7 @@
 ﻿using Laborator3.Model.Exceptions;
+using LanguageExt;
 using System.Text.RegularExpressions;
+using static LanguageExt.Prelude;
 
 namespace Laborator3.Model;
 
@@ -19,17 +21,11 @@ public record ProductCode
 
     public override string ToString() => Value;
 
-    public static bool TryParse(string stringValue, out ProductCode productCode)
+    public static Option<ProductCode> TryParse(string stringValue)
     {
-        bool isValid = false;
-        productCode = null;
-
         if (IsValid(stringValue))
-        {
-            isValid = true;
-            productCode = new(stringValue);
-        }
+            return Some(new ProductCode(stringValue));
 
-        return isValid;
+        return None;
     }
 }

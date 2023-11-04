@@ -1,43 +1,59 @@
 ﻿using Laborator3.Model;
+using LanguageExt;
 using System.Text;
 using static Laborator3.Model.OrderedProducts;
+using static LanguageExt.Prelude;
 
 namespace Laborator3;
 
 public static class OrderedProductsOperations
 {
-    public static IOrderedProducts ValidateOrderedProducts(Func<ProductCode, bool> checkProductExists,
-                                                           Func<Quantity, bool> checkProductIsInStock,
-                                                           UnvalidatedOrderedProducts orderedProducts)
+    public static Task<IOrderedProducts> ValidateOrderedProducts(Func<ProductCode, TryAsync<bool>> checkProductExists,
+                                                                 Func<Quantity, TryAsync<bool>> checkProductIsInStock,
+                                                                 UnvalidatedOrderedProducts orderedProducts)
+        => orderedProducts.ProductList
+                          .Select(ValidateProduct(checkProductExists, checkProductIsInStock))
+                          .Aggregate(CreateEmptyValidatedProductList().ToAsync(), ReduceValidProducts)
+                          .MatchAsync(Right: validatedProducts => new ValidatedOrderedProducts(validatedProducts),
+                                      LeftAsync: errorMessage
+                                                 => Task.FromResult(
+                                                    new InvalidatedOrderedProducts(orderedProducts.ProductList, errorMessage)
+                                                    as IOrderedProducts)
+                          );
+
+    private static Func<UnvalidatedOrderedProduct, EitherAsync<string, ValidatedOrderedProduct>> ValidateProduct(
+        Func<ProductCode, TryAsync<bool>> checkProductExists,
+        Func<Quantity, TryAsync<bool>> checkProductIsInStock)
+        => (unvalidatedOrderedProduct) => ValidateProduct(checkProductExists, checkProductIsInStock, unvalidatedOrderedProduct);
+
+    private static EitherAsync<string, ValidatedOrderedProduct> ValidateProduct(Func<ProductCode, TryAsync<bool>> checkProductExists,
+                                                                                Func<Quantity, TryAsync<bool>> checkProductIsInStock,
+                                                                                UnvalidatedOrderedProduct unvalidatedOrderedProduct)
+        => from productCode in ProductCode.TryParse(unvalidatedOrderedProduct.ProductCode)
+                                          .ToEitherAsync(() => $"Invalid product code ({unvalidatedOrderedProduct.ProductCode})")
+           from quantity in Quantity.TryParse(unvalidatedOrderedProduct.Quantity)
+                                    .ToEitherAsync(() => $"Invalid quantity ({unvalidatedOrderedProduct.Quantity})")
+           from productExists in checkProductExists(productCode)
+                                 .ToEither((error) => error.ToString())
+           from productIsInStock in checkProductIsInStock(quantity)
+                                    .ToEither((error) => error.ToString())
+           select new ValidatedOrderedProduct(productCode, quantity);
+
+    private static Either<string, List<ValidatedOrderedProduct>> CreateEmptyValidatedProductList()
+        => Right(new List<ValidatedOrderedProduct>());
+
+    private static EitherAsync<string, List<ValidatedOrderedProduct>> ReduceValidProducts(
+        EitherAsync<string, List<ValidatedOrderedProduct>> acc,
+        EitherAsync<string, ValidatedOrderedProduct> next)
+        => from list in acc
+           from nextProduct in next
+           select list.AppendValidProduct(nextProduct);
+
+    private static List<ValidatedOrderedProduct> AppendValidProduct(this List<ValidatedOrderedProduct> list,
+                                                                    ValidatedOrderedProduct validProduct)
     {
-        List<ValidatedOrderedProduct> validatedProducts = new();
-        bool isValidList = true;
-        string invalidReason = string.Empty;
-
-        foreach (var unvalidatedProduct in orderedProducts.ProductList)
-        {
-            if (!ProductCode.TryParse(unvalidatedProduct.ProductCode, out ProductCode productCode)
-                || !checkProductExists(productCode))
-            {
-                invalidReason = $"Invalid product code ({unvalidatedProduct.ProductCode})";
-                isValidList = false;
-                break;
-            }
-
-            if (!Quantity.TryParseQuantity(unvalidatedProduct.Quantity, out Quantity quantity)
-                && checkProductIsInStock(quantity))
-            {
-                invalidReason = $"Invalid quantity ({unvalidatedProduct.Quantity})";
-                isValidList = false;
-                break;
-            }
-
-            validatedProducts.Add(new(productCode, quantity));
-        }
-        
-        if (isValidList)
-            return new ValidatedOrderedProducts(validatedProducts);
-        else return new InvalidatedOrderedProducts(orderedProducts.ProductList, invalidReason);
+        list.Add(validProduct);
+        return list;
     }
 
     public static IOrderedProducts CalculateOrderedProducts(IOrderedProducts orderedProducts)
@@ -51,7 +67,7 @@ public static class OrderedProductsOperations
             new CalculatedOrderedProduct(validProduct.ProductCode,
                                          validProduct.Quantity,
                                          CalculateTotalPrice(validProduct)));
-        
+
         return new CalculatedOrderedProducts(calculatedProducts.ToList().AsReadOnly());
     });
 
